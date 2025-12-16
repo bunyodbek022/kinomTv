@@ -4,9 +4,12 @@ CREATE TYPE "Role" AS ENUM ('SUPERADMIN', 'ADMIN', 'USER');
 -- CreateEnum
 CREATE TYPE "SubType" AS ENUM ('FREE', 'PREMIUM');
 
+-- CreateEnum
+CREATE TYPE "SubscriptionStatus" AS ENUM ('active', 'expired', 'canceled', 'pending_payment');
+
 -- CreateTable
 CREATE TABLE "Users" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "username" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
@@ -20,8 +23,8 @@ CREATE TABLE "Users" (
 
 -- CreateTable
 CREATE TABLE "Profile" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "userId" UUID NOT NULL,
     "fullName" TEXT NOT NULL,
     "phone" TEXT NOT NULL,
     "country" TEXT NOT NULL,
@@ -33,7 +36,7 @@ CREATE TABLE "Profile" (
 
 -- CreateTable
 CREATE TABLE "Movies" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "title" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "description" TEXT,
@@ -51,7 +54,7 @@ CREATE TABLE "Movies" (
 
 -- CreateTable
 CREATE TABLE "Categories" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "description" TEXT,
@@ -63,13 +66,39 @@ CREATE TABLE "Categories" (
 
 -- CreateTable
 CREATE TABLE "MovieCategories" (
-    "id" TEXT NOT NULL,
-    "movieId" TEXT NOT NULL,
-    "categoryId" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "movieId" UUID NOT NULL,
+    "categoryId" UUID NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "MovieCategories_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "subscription_plans" (
+    "id" UUID NOT NULL,
+    "name" VARCHAR(50) NOT NULL,
+    "price" DECIMAL(10,2) NOT NULL,
+    "durationDays" INTEGER NOT NULL,
+    "features" JSONB NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+
+    CONSTRAINT "subscription_plans_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "user_subscriptions" (
+    "id" UUID NOT NULL,
+    "userId" UUID NOT NULL,
+    "planId" UUID NOT NULL,
+    "startDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "endDate" TIMESTAMP(3),
+    "status" "SubscriptionStatus" NOT NULL DEFAULT 'pending_payment',
+    "autoRenew" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "user_subscriptions_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -92,3 +121,9 @@ ALTER TABLE "MovieCategories" ADD CONSTRAINT "MovieCategories_movieId_fkey" FORE
 
 -- AddForeignKey
 ALTER TABLE "MovieCategories" ADD CONSTRAINT "MovieCategories_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Categories"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_subscriptions" ADD CONSTRAINT "user_subscriptions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "Users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_subscriptions" ADD CONSTRAINT "user_subscriptions_planId_fkey" FOREIGN KEY ("planId") REFERENCES "subscription_plans"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

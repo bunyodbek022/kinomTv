@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -18,8 +17,15 @@ enum SubType {
   PREMIUM
 }
 
+enum SubscriptionStatus {
+  active
+  expired
+  canceled
+  pending_payment
+}
+
 model Users {
-  id        String   @id @default(uuid())
+  id        String   @id @default(uuid()) @db.Uuid
   username  String   @unique
   email     String   @unique
   password  String
@@ -28,11 +34,13 @@ model Users {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   profile   Profile?
+
+  userSubscriptions UserSubscription[]
 }
 
 model Profile {
-  id        String   @id @default(uuid())
-  userId    String   @unique
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @db.Uuid
   fullName  String
   phone     String
   country   String
@@ -43,7 +51,7 @@ model Profile {
 }
 
 model Movies {
-  id               String   @id @default(uuid())
+  id               String   @id @default(uuid()) @db.Uuid
   title            String
   slug             String   @unique
   description      String?
@@ -59,8 +67,8 @@ model Movies {
   movieCategories MovieCategories[]
 }
 
-model Categories {
-  id          String   @id @default(uuid())
+model Categories { 
+  id          String   @id @default(uuid()) @db.Uuid
   name        String
   slug        String
   description String?
@@ -71,12 +79,42 @@ model Categories {
 }
 
 model MovieCategories {
-  id          String   @id @default(uuid())
-  movieId    String 
-  categoryId String
+  id         String   @id @default(uuid()) @db.Uuid
+  movieId    String   @db.Uuid
+  categoryId String   @db.Uuid
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  movie Movies @relation(fields: [movieId], references: [id])
+  movie    Movies     @relation(fields: [movieId], references: [id])
   category Categories @relation(fields: [categoryId], references: [id])
+}
+
+model SubscriptionPlan {
+  id           String  @id @default(uuid()) @db.Uuid
+  name        String  @db.VarChar(50)
+  price        Decimal @db.Decimal(10, 2)
+  durationDays Int
+  features     Json
+  isActive     Boolean @default(true)
+
+  userSubscriptions UserSubscription[]
+
+  @@map("subscription_plans")
+}
+
+model UserSubscription {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  planId String @db.Uuid
+
+  startDate DateTime           @default(now())
+  endDate   DateTime?
+  status    SubscriptionStatus @default(pending_payment)
+  autoRenew Boolean            @default(false)
+  createdAt DateTime           @default(now())
+
+  user Users            @relation(fields: [userId], references: [id])
+  plan SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@map("user_subscriptions")
 }
