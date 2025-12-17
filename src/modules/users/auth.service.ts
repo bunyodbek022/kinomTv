@@ -144,6 +144,7 @@ export class AuthService {
         httpOnly: true,
         secure: isProduction,
         sameSite: 'lax',
+        path: '/',
         maxAge: 1000 * 60 * 60,
       });
       const DATE_TIME_FORMAT = 'yyyy-MM-dd HH:mm';
@@ -242,9 +243,23 @@ export class AuthService {
     }
   }
 
-  async update(id: number, updateUserDto: UpdateUserDto) {
+  async update(id: string, payload: UpdateUserDto) {
     try {
-      return `This action updates a #${id} user`;
+      const userExist = await this.findOne(id);
+      if (userExist.success = false) {
+        return {
+          success: false,
+          message: "User topilmadi"
+        };
+      };
+
+      
+      const updatedUser = await this.prisma.users.update({ where: { id }, data: payload });
+      return {
+        success: true,
+        message: "User malumotlari yangilandi",
+        data: updatedUser
+      }
     } catch (error) {
       console.log(error);
       throw new InternalServerErrorException({
@@ -268,11 +283,12 @@ export class AuthService {
 
   async logout(res: Response) {
     const isProduction = process.env.NODE_ENV === 'production';
-    res.cookie("accessToken", '', {
+    res.clearCookie("accessToken", {
       httpOnly: true,
-        secure: isProduction,
-        sameSite: 'lax',
-        maxAge: 1000 * 60 * 60,
-    })
+      secure: isProduction,
+      sameSite: 'lax',
+      path: '/'
+    });
+    res.send({ succcess: true, message: "Muvaffaqiyatli tizimdan chiqildi" });
   }
 }

@@ -1,26 +1,67 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class ProfileService {
-  create(createProfileDto: CreateProfileDto) {
-    return 'This action adds a new profile';
+  constructor(private readonly prisma: PrismaService){}
+  async create(payload: CreateProfileDto, userId: string) {
+    try {
+      const profile = await this.prisma.profile.create({
+        data: {
+          userId: userId,
+          fullName: payload.fullName,
+          phone: payload.phone,
+          country: payload.country
+        }
+      });
+      return {
+        success: true,
+        message: "Profile muvaffaqqiyatli yaratildi",
+        data: profile
+      };
+    } catch (error) {
+      console.log(error);
+      throw new InternalServerErrorException({ message: "Profile yaratishda xatolik", error });
+    }
   }
 
-  findAll() {
-    return `This action returns all profile`;
+
+  async findOne(id: string) {
+    try {
+      const profile = await this.prisma.profile.findUnique({ where: { id } });
+      return {
+        success: true,
+        data: profile
+      }
+    } catch (error) {
+      console.log(error);
+      throw new InternalServerErrorException({message: "Profileni ko'rishda xatolik"})
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} profile`;
+  async update(id: string, payload: UpdateProfileDto) {
+    try {
+      const updatedProfile = await this.prisma.profile.update({ where: { id }, data: payload });
+      return {
+        success: true,
+        message: "Profil muvaffaqiyatli yangilandi",
+        data: updatedProfile
+      }
+    } catch (error) {
+      console.log(error);
+      throw new InternalServerErrorException({message: "Profileni update qilishda xatolik"})
+    }
   }
 
-  update(id: number, updateProfileDto: UpdateProfileDto) {
-    return `This action updates a #${id} profile`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} profile`;
-  }
+  // async remove(id: string) {
+  //   try {
+  //     return `This action removes a #${id} profile`;
+      
+  //   } catch (error) {
+  //     console.log(error);
+  //     throw new InternalServerErrorException({message: "Profileni o'chirishda xatolik"})
+  //   }
+  // }
 }

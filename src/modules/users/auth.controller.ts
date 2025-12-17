@@ -7,6 +7,9 @@ import {
   Param,
   Delete,
   Res,
+  UseGuards,
+  Req,
+  ForbiddenException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/create-user.dto';
@@ -19,6 +22,9 @@ import {
   ApiResponse,
   ApiSecurity,
 } from '@nestjs/swagger';
+import { Roles } from 'src/decorators/role.decorator';
+import { AuthGuard } from 'src/guards/auth.guard';
+import { RolesGuard } from 'src/guards/role.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -44,28 +50,52 @@ export class AuthController {
 
   @Get()
   @ApiSecurity('cookie-auth-key')
+  @Roles('SUPERADMIN', 'ADMIN')
+  @UseGuards(AuthGuard, RolesGuard)
   findAll() {
     return this.authService.findAll();
   }
 
   @Get(':id')
-  // @ApiSecurity('cookie-auth-key')
+  @ApiSecurity('cookie-auth-key')
+  @Roles('SUPERADMIN', 'ADMIN')
+  @UseGuards(AuthGuard, RolesGuard)
   findOne(@Param('id') id: string) {
     return this.authService.findOne(id);
   }
 
   @Patch(':id')
   @ApiSecurity('cookie-auth-key')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.authService.update(+id, updateUserDto);
+  @UseGuards(AuthGuard, RolesGuard)
+  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto, @Req() req){
+    const user = req.user;
+    const isAdmin = user.role === 'ADMIN' || user.role === 'SUPERADMIN';
+    if (!isAdmin && id !== String(user.id)) {
+      throw new ForbiddenException(
+        "Sizda boshqa foydalanuvchi ma'lumotlarini o'zgartirish huquqi yo'q"
+      );
+    }
+    return this.authService.update(id, updateUserDto);
   }
+  
 
   @Delete(':id')
   @ApiSecurity('cookie-auth-key')
-  remove(@Param('id') id: string) {
+  remove(@Param('id') id: string, @Req() req) {
+    const user = req.user;
+    const isAdmin = user.role === 'ADMIN' || user.role === 'SUPERADMIN';
+    if (!isAdmin && id !== String(user.id)) {
+      throw new ForbiddenException(
+        "Sizda boshqa foydalanuvchi ma'lumotlarini o'chirish huquqi yo'q"
+      );
+    }
     return this.authService.remove(id);
   }
 
-  @Delete()
-  logout() {}
+  @Post()
+  @ApiOperation({ summary: 'Logout' })
+  @ApiSecurity('cookie-auth-key')
+  logout(@Res() res: Response) {
+    return this.authService.logout(res);
+  }
 }

@@ -24,6 +24,18 @@ enum SubscriptionStatus {
   pending_payment
 }
 
+enum PaymentMethod {
+    CARD
+    BANK_TRANSFER
+}
+
+enum PaymentStatus {
+  pending
+  complected
+  failed
+  refunded
+}
+
 model Users {
   id        String   @id @default(uuid()) @db.Uuid
   username  String   @unique
@@ -58,6 +70,7 @@ model Movies {
   release_year     Int
   durationMinuts   Int
   posterUrl        String
+  videoUrl         String
   rating           Decimal  @db.Decimal(2, 1)
   subscriptionType SubType  @default(FREE)
   viewCount        Int      @default(0)
@@ -116,5 +129,21 @@ model UserSubscription {
   user Users            @relation(fields: [userId], references: [id])
   plan SubscriptionPlan @relation(fields: [planId], references: [id])
 
+  payments Payments[]
+
   @@map("user_subscriptions")
+}
+
+model Payments {
+  id String @id @default(uuid()) @db.Uuid
+  userSubscriptionId String @db.Uuid
+  amount Decimal  @db.Decimal(10, 2)
+  paymentMethod PaymentMethod
+  paymentDetailes Json
+  status PaymentStatus
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  userSubscription UserSubscription @relation(fields: [userSubscriptionId], references: [id])
 }

@@ -1,8 +1,14 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateSubscriptionPlanDto } from './dto/create-subscription-plan.dto';
 import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UUID } from 'crypto';
+import { PurchaseDto } from './dto/purchase-subscription';
+import { addDays, format } from 'date-fns';
 
 @Injectable()
 export class SubscriptionPlanService {
@@ -10,7 +16,7 @@ export class SubscriptionPlanService {
   async create(payload: CreateSubscriptionPlanDto) {
     try {
       const exist = await this.prisma.subscriptionPlan.findFirst({
-        where: { name: payload.name },
+        where: { name: payload.name, isActive: true },
       });
       if (exist) {
         return {
@@ -40,6 +46,75 @@ export class SubscriptionPlanService {
     }
   }
 
+  async purchase(userId: UUID, payload: PurchaseDto) {
+    try {
+      const subExist = await this.prisma.subscriptionPlan.findUnique({
+        where: { id: payload.planId },
+      });
+      if (!subExist) {
+        throw new NotFoundException('Bunday subscription plan mavjud emas');
+      }
+
+      const DATE_TIME_FORMAT = 'yyyy-MM-dd HH:mm';
+      const end = addDays(new Date(), 30);
+      const userSub = await this.prisma.userSubscription.create({
+        data: {
+          planId: subExist.id,
+          userId: userId,
+          startDate: format(new Date(), DATE_TIME_FORMAT),
+          endDate: end,
+          status: 'pending_payment',
+          autoRenew: payload.autoRenew || false,
+        },
+      });
+
+      const payment = await this.prisma.payments.create({
+        data: {
+          userSubscriptionId: userSub.id,
+          amount: subExist.price,
+          paymentMethod: payload.paymentMethod,
+          paymentDetailes: JSON.stringify(payload.payment_details),
+          status: "complected"
+        }
+      });
+
+      if (payment.status === "complected") {
+        await this.prisma.userSubscription.update({
+          where: { id: userSub.id },
+          data: { status: "active" }
+        });
+      }
+      return {
+        success: true,
+        message: "Obuna muvaffaqiyatli sotib olindi",
+        data: {
+          subscription: {
+            id: userSub.id,
+            plan: {
+              id: subExist.id,
+              name: subExist.name
+            },
+            startDate: userSub.startDate,
+            endDate: userSub.endDate,
+            status: userSub.status,
+            autoRenew: userSub.autoRenew
+          },
+          payment: {
+            id: payment.id,
+            amount: payment.amount,
+            status: payment.status,
+            paymentMethod: payment.paymentMethod
+          }
+        }
+      }
+    } catch (error) {
+      console.log(error);
+      throw new InternalServerErrorException({
+        message: 'subscription xarid qilishda xatolik',
+        error,
+      });
+    }
+  }
   async findAll() {
     try {
       const plans = await this.prisma.subscriptionPlan.findMany();
@@ -72,7 +147,6 @@ export class SubscriptionPlanService {
         success: true,
         data: plan,
       };
-      
     } catch (error) {
       console.log(error);
       throw new InternalServerErrorException({
@@ -90,8 +164,8 @@ export class SubscriptionPlanService {
       });
       return {
         success: true,
-        message: "subscription plan updated successfully",
-        data: updatedPlan
+        message: 'subscription plan updated successfully',
+        data: updatedPlan,
       };
     } catch (error) {
       console.log(error);
@@ -104,10 +178,13 @@ export class SubscriptionPlanService {
 
   async remove(id: string) {
     try {
-      const softDeleted = await this.prisma.subscriptionPlan.update({ where: { id }, data: { isActive: false } });
+      const softDeleted = await this.prisma.subscriptionPlan.update({
+        where: { id },
+        data: { isActive: false },
+      });
       return {
         success: true,
-        message: "Bu subscription plan recomendationdan olib tashlandi"
+        message: 'Bu subscription plan recomendationdan olib tashlandi',
       };
     } catch (error) {
       console.log(error);
