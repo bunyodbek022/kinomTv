@@ -25,8 +25,8 @@ enum SubscriptionStatus {
 }
 
 enum PaymentMethod {
-    CARD
-    BANK_TRANSFER
+  CARD
+  BANK_TRANSFER
 }
 
 enum PaymentStatus {
@@ -48,6 +48,9 @@ model Users {
   profile   Profile?
 
   userSubscriptions UserSubscription[]
+  userFavorities    UserFavorite[]
+  review            Review[]
+  watchHistory      WatchHistory[]
 }
 
 model Profile {
@@ -78,9 +81,12 @@ model Movies {
   updatedAt        DateTime @updatedAt
 
   movieCategories MovieCategories[]
+  userFavorities  UserFavorite[]
+  review          Review[]
+  watchHistory    WatchHistory[]
 }
 
-model Categories { 
+model Categories {
   id          String   @id @default(uuid()) @db.Uuid
   name        String
   slug        String
@@ -104,7 +110,7 @@ model MovieCategories {
 
 model SubscriptionPlan {
   id           String  @id @default(uuid()) @db.Uuid
-  name        String  @db.VarChar(50)
+  name         String  @db.VarChar(50)
   price        Decimal @db.Decimal(10, 2)
   durationDays Int
   features     Json
@@ -135,15 +141,57 @@ model UserSubscription {
 }
 
 model Payments {
-  id String @id @default(uuid()) @db.Uuid
-  userSubscriptionId String @db.Uuid
-  amount Decimal  @db.Decimal(10, 2)
-  paymentMethod PaymentMethod
-  paymentDetailes Json
-  status PaymentStatus
+  id                 String        @id @default(uuid()) @db.Uuid
+  userSubscriptionId String        @db.Uuid
+  amount             Decimal       @db.Decimal(10, 2)
+  paymentMethod      PaymentMethod
+  paymentDetailes    Json
+  status             PaymentStatus
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   userSubscription UserSubscription @relation(fields: [userSubscriptionId], references: [id])
+}
+
+model UserFavorite {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  movieId   String   @map("movie_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  Users  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie Movies @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
+}
+
+model Review {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  movieId   String   @db.Uuid
+  rating    Decimal  @db.Decimal(5, 2)
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  user  Users  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie Movies @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
+  @@map("reviews")
+}
+
+model WatchHistory {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @db.Uuid
+  movieId           String   @db.Uuid
+  watchedDuration   Int
+  watchedPercentage Decimal  @db.Decimal(5, 2)
+  lastWatched       DateTime @default(now()) @updatedAt
+
+  user  Users  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie Movies @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId]) // Tarixda bitta kino bir foydalanuvchi uchun bitta qatorda yangilanib turadi
+  @@map("watch_history")
 }

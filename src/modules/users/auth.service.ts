@@ -1,7 +1,9 @@
 import {
   ForbiddenException,
+  HttpException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { RegisterDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -20,23 +22,14 @@ export class AuthService {
   ) {}
   async register(payload: RegisterDto) {
     try {
-      const username = await this.prisma.users.findUnique({
-        where: { username: payload.username },
+      const existingUser = await this.prisma.users.findFirst({
+        where: {
+          OR: [{ username: payload.username }, { email: payload.email }],
+        },
       });
-      if (username) {
-        return {
-          success: false,
-          message: 'User aready exists',
-        };
-      }
-      const email = await this.prisma.users.findUnique({
-        where: { email: payload.email },
-      });
-      if (email) {
-        return {
-          success: false,
-          message: 'User aready exists',
-        };
+
+      if (existingUser) {
+        return { success: false, message: 'User already exists' };
       }
 
       const hashedPassword = await bcrypt.hash(payload.password, 10);
@@ -93,11 +86,9 @@ export class AuthService {
       });
 
       if (!user) {
-        return {
-          success: false,
-          messsage: 'Username yoki parolda xatolik',
-        };
+        throw new NotFoundException('User topilmadi');
       }
+      console.log(user);
       const isMatch = await bcrypt.compare(payload.password, user.password);
 
       if (!isMatch) {
@@ -112,6 +103,7 @@ export class AuthService {
         role: user.role,
       });
 
+      const isAdmin = user.role === 'ADMIN' || user.role === 'SUPERADMIN';
       const isProduction = process.env.NODE_ENV === 'production';
 
       const activeSub = await this.prisma.userSubscription.findFirst({
@@ -125,21 +117,17 @@ export class AuthService {
         orderBy: {
           endDate: 'desc',
         },
-        take: 1,
+        include: { plan: true },
       });
 
-      if (!activeSub) {
-        const sub = await this.prisma.userSubscription.findFirst({ where: { userId: user.id } });
-        await this.prisma.userSubscription.update({ where : { id: sub?.id }, data: { status: "expired" } });
-        throw new ForbiddenException(
-          'Sizning obuna muddatingiz tugadi. Iltimos, obunani yangilang.',
-        );
+      if (!activeSub && !isAdmin) {
+        await this.prisma.userSubscription.updateMany({
+          where: { userId: user.id, status: 'active' },
+          data: { status: 'expired' },
+        });
+        throw new ForbiddenException('Sizning obuna muddatingiz tugadi.');
       }
-
-      const plan = await this.prisma.subscriptionPlan.findUnique({
-        where: { id: activeSub.planId },
-      });
-
+      
       res.cookie('accessToken', token, {
         httpOnly: true,
         secure: isProduction,
@@ -147,24 +135,27 @@ export class AuthService {
         path: '/',
         maxAge: 1000 * 60 * 60,
       });
+
       const DATE_TIME_FORMAT = 'yyyy-MM-dd HH:mm';
 
-      if (!activeSub.endDate) return;
-
+      if (!activeSub?.endDate) {
+        throw new NotFoundException("Subscriptionni tugash vaqti yo'q");
+      }
       res.send({
-        success: true,
-        message: 'Muvaffaqqiyatli kirildi',
-        data: {
-          user_id: user.id,
-          username: user.username,
-          role: user.role,
-          subscription: plan?.name,
-          startSubDate: format(activeSub.startDate, DATE_TIME_FORMAT),
-          endSubDate: format(activeSub.endDate, DATE_TIME_FORMAT),
-        },
-      });
+      success: true,
+      message: 'Muvaffaqqiyatli kirildi',
+      data: {
+        user_id: user.id,
+        username: user.username,
+        role: user.role,
+        subscription: isAdmin ? 'LIFETIME' : (activeSub?.plan?.name || 'FREE'),
+        startSubDate: activeSub ? format(activeSub.startDate, DATE_TIME_FORMAT) : null,
+        endSubDate: activeSub ? format(activeSub.endDate, DATE_TIME_FORMAT) : "UNLIMITED",
+      },
+    });
     } catch (error) {
       console.log(error);
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         message: 'User login qilishda xatolik yuz berdi ',
         error,
@@ -232,7 +223,7 @@ export class AuthService {
       });
       return {
         success: true,
-        data: { ...user, subStatus: activeSub?.status || null, },
+        data: { ...user, subStatus: activeSub?.status || null },
       };
     } catch (error) {
       console.log(error);
@@ -246,20 +237,22 @@ export class AuthService {
   async update(id: string, payload: UpdateUserDto) {
     try {
       const userExist = await this.findOne(id);
-      if (userExist.success = false) {
+      if ((userExist.success = false)) {
         return {
           success: false,
-          message: "User topilmadi"
+          message: 'User topilmadi',
         };
-      };
+      }
 
-      
-      const updatedUser = await this.prisma.users.update({ where: { id }, data: payload });
+      const updatedUser = await this.prisma.users.update({
+        where: { id },
+        data: payload,
+      });
       return {
         success: true,
-        message: "User malumotlari yangilandi",
-        data: updatedUser
-      }
+        message: 'User malumotlari yangilandi',
+        data: updatedUser,
+      };
     } catch (error) {
       console.log(error);
       throw new InternalServerErrorException({
@@ -283,12 +276,12 @@ export class AuthService {
 
   async logout(res: Response) {
     const isProduction = process.env.NODE_ENV === 'production';
-    res.clearCookie("accessToken", {
+    res.clearCookie('accessToken', {
       httpOnly: true,
       secure: isProduction,
       sameSite: 'lax',
-      path: '/'
+      path: '/',
     });
-    res.send({ succcess: true, message: "Muvaffaqiyatli tizimdan chiqildi" });
+    res.send({ succcess: true, message: 'Muvaffaqiyatli tizimdan chiqildi' });
   }
 }

@@ -18,7 +18,7 @@ export class MoviesService {
         ...payload,
         slug,
         videoUrl : "",
-        posterUrl: payload.posterUrl || '',
+        posterUrl: "",
       },
     });
 
@@ -39,8 +39,8 @@ export class MoviesService {
     const updatedMovie = await this.prisma.movies.update({
       where: { id },
       data: {
-        videoUrl: paths.videoPath ? paths.videoPath : movie.videoUrl,
-        posterUrl: paths.posterPath ? paths.posterPath : movie.posterUrl,
+        videoUrl: paths.videoPath ? `http://localhost:${process.env.PORT}/` + paths.videoPath : movie.videoUrl,
+        posterUrl: paths.posterPath ? `http://localhost:${process.env.PORT}/` + paths.posterPath : movie.posterUrl,
       },
     });
 

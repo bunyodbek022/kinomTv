@@ -10,6 +10,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaModule } from './prisma/prima.module';
 import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { SubscriptionPlanModule } from './modules/subscription-plan/subscription-plan.module';
+import { FavoritesModule } from './modules/favorites/favorites.module';
 
 @Module({
   imports: [UsersModule, MoviesModule, ProfileModule, MovieFilesModule, CategoriesModule,
@@ -29,6 +30,7 @@ import { SubscriptionPlanModule } from './modules/subscription-plan/subscription
       inject: [ConfigService], 
     }),
     SubscriptionPlanModule,
+    FavoritesModule,
 
   ],
   controllers: [AppController],

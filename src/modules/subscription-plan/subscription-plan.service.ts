@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -48,18 +49,23 @@ export class SubscriptionPlanService {
 
   async purchase(userId: UUID, payload: PurchaseDto) {
     try {
-      const subExist = await this.prisma.subscriptionPlan.findUnique({
+      const subPlanExist = await this.prisma.subscriptionPlan.findUnique({
         where: { id: payload.planId },
       });
-      if (!subExist) {
+      if (!subPlanExist) {
         throw new NotFoundException('Bunday subscription plan mavjud emas');
       }
-
+      const user = await this.prisma.users.findUnique({ where: { id: userId } });
+      if (subPlanExist.name === "LIFETIME" && user?.role === "USER") {
+        throw new ForbiddenException("Siz bu subscription planda foydalana olmaysiz");
+      }
+      
       const DATE_TIME_FORMAT = 'yyyy-MM-dd HH:mm';
-      const end = addDays(new Date(), 30);
+      const end = addDays(new Date(), subPlanExist.durationDays);
+      
       const userSub = await this.prisma.userSubscription.create({
         data: {
-          planId: subExist.id,
+          planId: subPlanExist.id,
           userId: userId,
           startDate: format(new Date(), DATE_TIME_FORMAT),
           endDate: end,
@@ -71,7 +77,7 @@ export class SubscriptionPlanService {
       const payment = await this.prisma.payments.create({
         data: {
           userSubscriptionId: userSub.id,
-          amount: subExist.price,
+          amount: subPlanExist.price,
           paymentMethod: payload.paymentMethod,
           paymentDetailes: JSON.stringify(payload.payment_details),
           status: "complected"
@@ -91,8 +97,8 @@ export class SubscriptionPlanService {
           subscription: {
             id: userSub.id,
             plan: {
-              id: subExist.id,
-              name: subExist.name
+              id: subPlanExist.id,
+              name: subPlanExist.name
             },
             startDate: userSub.startDate,
             endDate: userSub.endDate,

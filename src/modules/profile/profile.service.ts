@@ -30,7 +30,7 @@ export class ProfileService {
 
   async findOne(id: string) {
     try {
-      const profile = await this.prisma.profile.findUnique({ where: { id } });
+      const profile = await this.prisma.profile.findUnique({ where: { userId: id } });
       return {
         success: true,
         data: profile
