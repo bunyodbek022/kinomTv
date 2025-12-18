@@ -13,6 +13,7 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import type { Response } from 'express';
 import { addDays, format } from 'date-fns';
+import { tr } from 'date-fns/locale';
 
 @Injectable()
 export class AuthService {
@@ -29,7 +30,7 @@ export class AuthService {
       });
 
       if (existingUser) {
-        return { success: false, message: 'User already exists' };
+        return { success: false, message: 'Email or username  already exists' };
       }
 
       const hashedPassword = await bcrypt.hash(payload.password, 10);
@@ -38,7 +39,7 @@ export class AuthService {
           username: payload.username,
           email: payload.email,
           password: hashedPassword,
-          awatarUrl: payload.awatarUrl,
+          awatarUrl: payload.avatar,
         },
       });
       const freePlan = await this.prisma.subscriptionPlan.findFirst({
@@ -66,6 +67,7 @@ export class AuthService {
           user_id: user.id,
           username: user.username,
           role: user.role,
+          avatar: user.awatarUrl,
           createdAt: user.createdAt,
           subscriptionPlan: freePlan.name,
         },
@@ -88,7 +90,6 @@ export class AuthService {
       if (!user) {
         throw new NotFoundException('User topilmadi');
       }
-      console.log(user);
       const isMatch = await bcrypt.compare(payload.password, user.password);
 
       if (!isMatch) {
@@ -138,6 +139,7 @@ export class AuthService {
 
       const DATE_TIME_FORMAT = 'yyyy-MM-dd HH:mm';
 
+      console.log(activeSub)
       if (!activeSub?.endDate) {
         throw new NotFoundException("Subscriptionni tugash vaqti yo'q");
       }
@@ -148,6 +150,7 @@ export class AuthService {
         user_id: user.id,
         username: user.username,
         role: user.role,
+        avatar: user.awatarUrl,
         subscription: isAdmin ? 'LIFETIME' : (activeSub?.plan?.name || 'FREE'),
         startSubDate: activeSub ? format(activeSub.startDate, DATE_TIME_FORMAT) : null,
         endSubDate: activeSub ? format(activeSub.endDate, DATE_TIME_FORMAT) : "UNLIMITED",
@@ -172,6 +175,8 @@ export class AuthService {
           role: true,
           awatarUrl: true,
           createdAt: true,
+         
+          userSubscriptions: true
         },
       });
       return {

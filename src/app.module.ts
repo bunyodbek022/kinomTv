@@ -4,7 +4,6 @@ import { AppService } from './app.service';
 import { UsersModule } from './modules/users/auth.module';
 import { MoviesModule } from './modules/movies/movies.module';
 import { ProfileModule } from './modules/profile/profile.module';
-import { MovieFilesModule } from './modules/movie-files/movie-files.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaModule } from './prisma/prima.module';
@@ -13,7 +12,7 @@ import { SubscriptionPlanModule } from './modules/subscription-plan/subscription
 import { FavoritesModule } from './modules/favorites/favorites.module';
 
 @Module({
-  imports: [UsersModule, MoviesModule, ProfileModule, MovieFilesModule, CategoriesModule,
+  imports: [UsersModule, MoviesModule, ProfileModule, CategoriesModule,
     ConfigModule.forRoot({
       isGlobal : true
   }),

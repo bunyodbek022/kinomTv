@@ -1,26 +1,70 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
+
 
 @Injectable()
 export class CategoriesService {
-  create(createCategoryDto: CreateCategoryDto) {
-    return 'This action adds a new category';
+  constructor(private readonly prisma: PrismaService){}
+  async create(payload: CreateCategoryDto) {
+    try {
+      const category = await this.prisma.categories.findFirst({ where: { name: payload.name } });
+
+      if (category) {
+        throw new ConflictException({ message: "Bu nomdagi allaqachon mavjud" });
+      }
+
+      const newCategory = await this.prisma.categories.create({ data: payload })
+      
+      return {
+        success: true,
+        data: newCategory
+      }
+      
+    } catch (error) {
+      console.log(error)
+      throw new InternalServerErrorException({message: "categoriya yaratishda xatolik"})
+    }
   }
 
-  findAll() {
-    return `This action returns all categories`;
+  async findAll() {
+    try {
+      return  this.prisma.categories.findMany()
+      
+    } catch (error) {
+      console.log(error)
+      throw new InternalServerErrorException({message: "categoriya yaratishda xatolik"})
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} category`;
+  async findOne(id: string) {
+    try {
+      return `This action returns a #${id} category`;
+      
+    } catch (error) {
+      console.log(error)
+      throw new InternalServerErrorException({message: "categoriya yaratishda xatolik"})
+    }
   }
 
-  update(id: number, updateCategoryDto: UpdateCategoryDto) {
-    return `This action updates a #${id} category`;
+  async update(id: string, payload: UpdateCategoryDto) {
+    try {
+      return this.prisma.categories.update({ where: { id }, data: payload });
+      
+    } catch (error) {
+      console.log(error)
+      throw new InternalServerErrorException({ message: "categoriya yaratishda xatolik" })
+    }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} category`;
+  async remove(id: string) {
+    try {
+      return this.prisma.categories.delete({ where: { id } });
+      
+    } catch (error) {
+      console.log(error)
+      throw new InternalServerErrorException({message: "categoriya yaratishda xatolik"})
+    }
   }
 }

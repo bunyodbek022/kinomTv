@@ -9,7 +9,10 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
+    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true , transform: true, 
+  transformOptions: {
+    enableImplicitConversion: true, 
+  },}),
   );
   app.use(cookieParser());
   const config = new DocumentBuilder()

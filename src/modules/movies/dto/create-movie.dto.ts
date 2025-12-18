@@ -8,6 +8,8 @@ import {
   Min,
   Max,
   IsNotEmpty,
+  IsArray,
+  IsUUID,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -41,14 +43,6 @@ export class CreateMovieDto {
   @Min(1)
   durationMinuts: number;
 
-  @ApiProperty({ example: 'null' })
-  @IsOptional()
-  posterUrl?: string;
-
-  @ApiProperty({ example: 'null' })
-  @IsOptional()
-  videoUrl?: string;
-
   @ApiProperty({ example: '8.8' })
   @IsNotEmpty()
   rating: string;
@@ -57,4 +51,10 @@ export class CreateMovieDto {
   @IsEnum(SubType)
   @IsOptional()
   subscriptionType?: SubType;
+
+  @ApiProperty({example : ['id1', 'id2']})
+  @IsArray()
+  @IsUUID("4", { each: true })
+  @IsOptional()
+  categoryIds? : string[]
 }

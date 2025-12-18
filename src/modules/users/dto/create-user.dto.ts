@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
   IsNotEmpty,
@@ -22,8 +22,7 @@ export class RegisterDto {
   @ApiProperty({example: "123456", description : "Min length 6"})
   password: string;
 
+  @ApiPropertyOptional({ type: 'string', format: 'binary', description: 'Avatar rasmi' })
   @IsOptional()
-  @IsString()
-  @ApiProperty()
-  awatarUrl?: string;
+  avatar?: any;
 }

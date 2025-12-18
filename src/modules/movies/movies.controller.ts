@@ -9,8 +9,9 @@ import {
   UseGuards,
   UseInterceptors,
   ParseUUIDPipe,
-  UploadedFile,
   UploadedFiles,
+  Query,
+  Req,
 } from '@nestjs/common';
 import { MoviesService } from './movies.service';
 import { CreateMovieDto } from './dto/create-movie.dto';
@@ -18,25 +19,46 @@ import { UpdateMovieDto } from './dto/update-movie.dto';
 import { AuthGuard } from 'src/guards/auth.guard';
 import { RolesGuard } from 'src/guards/role.guard';
 import { Roles } from 'src/decorators/role.decorator';
-import {
-  FileFieldsInterceptor,
-} from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-import { ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiResponse,
+  ApiSecurity,
+} from '@nestjs/swagger';
+import { MovieQueryDto } from './dto/movie.query.dto';
+import { CreateReview } from './dto/create-review.dto';
 
 @Controller('movies')
 export class MoviesController {
   constructor(private readonly moviesService: MoviesService) {}
 
-  @Post()
+  @Post(':movieId/reviews')
+  @ApiSecurity('cookie-auth-key')
+  @UseGuards(AuthGuard)
+  createReview(
+    @Body() payload: CreateReview,
+    @Req() req,
+    @Param('movieId', ParseUUIDPipe) movieId: string,
+  ) {
+    const userId = req.user.id;
+    return this.moviesService.createReview(payload, userId, movieId);
+  }
+
+  @Post('admin')
+  @ApiOperation({ summary: 'Movie qoshish admin orqali' })
+  @ApiSecurity('cookie-auth-key')
   @Roles('ADMIN', 'SUPERADMIN')
   @UseGuards(AuthGuard, RolesGuard)
   create(@Body() createMovieDto: CreateMovieDto) {
     return this.moviesService.create(createMovieDto);
   }
 
-  @Post('upload-assets/:id')
+  @Post('admin/upload-assets/:id')
+  @ApiOperation({ summary: 'Moviega video va poster qoshish admin orqali' })
   @ApiOperation({ summary: 'Kino videosi va posterini yuklash' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -98,22 +120,61 @@ export class MoviesController {
   }
 
   @Get()
-  findAll() {
-    return this.moviesService.findAll();
+  @ApiOperation({
+    summary: 'Barcha kinolarni filtrlash va pagination bilan olish',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Muvaffaqiyatli royxat qaytarildi.',
+  })
+  @ApiSecurity('cookie-auth-key')
+  @UseGuards(AuthGuard)
+  findAll(@Query() query: MovieQueryDto) {
+    return this.moviesService.findAll(query);
   }
 
   @Get(':slug')
-  findOne(@Param('slug') slug: string) {
-    return this.moviesService.findOne(slug);
+  @ApiSecurity('cookie-auth-key')
+  @UseGuards(AuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'Muvaffaqiyatli kirildi.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Siz bu kinoni korish huquqiga ega emasssiz.',
+  })
+  findOne(@Param('slug') slug: string, @Req() req) {
+    const userId = req.user.id;
+    return this.moviesService.findOne(slug, userId);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateMovieDto: UpdateMovieDto) {
-    return this.moviesService.update(+id, updateMovieDto);
+  @ApiSecurity('cookie-auth-key')
+  @Roles('ADMIN', 'SUPERADMIN')
+  @UseGuards(AuthGuard, RolesGuard)
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() payload: UpdateMovieDto,
+  ) {
+    return this.moviesService.update(id, payload);
+  }
+
+  @Delete(':movieId/reviews/:reviewId')
+  @ApiSecurity('cookie-auth-key')
+  @UseGuards(AuthGuard)
+  deleteReview(
+    @Param('movieId', ParseUUIDPipe) movieId: string,
+    @Param('reviewId', ParseUUIDPipe) reviewId: string,
+    @Req() req,
+  ) {
+    const userId = req.user.id;
+    return this.moviesService.deleteReview(movieId, reviewId, userId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.moviesService.remove(+id);
+  @ApiSecurity('cookie-auth-key')
+  remove(@Param('id', ParseUUIDPipe) id: string) {
+    return this.moviesService.remove(id);
   }
 }

@@ -62,7 +62,7 @@ model Profile {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user Users @relation(fields: [userId], references: [id])
+  user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Movies {
@@ -132,8 +132,8 @@ model UserSubscription {
   autoRenew Boolean            @default(false)
   createdAt DateTime           @default(now())
 
-  user Users            @relation(fields: [userId], references: [id])
-  plan SubscriptionPlan @relation(fields: [planId], references: [id])
+  user Users            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
 
   payments Payments[]
 
@@ -192,6 +192,6 @@ model WatchHistory {
   user  Users  @relation(fields: [userId], references: [id], onDelete: Cascade)
   movie Movies @relation(fields: [movieId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, movieId]) // Tarixda bitta kino bir foydalanuvchi uchun bitta qatorda yangilanib turadi
+  @@unique([userId, movieId]) 
   @@map("watch_history")
 }

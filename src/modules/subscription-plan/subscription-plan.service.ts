@@ -55,19 +55,23 @@ export class SubscriptionPlanService {
       if (!subPlanExist) {
         throw new NotFoundException('Bunday subscription plan mavjud emas');
       }
-      const user = await this.prisma.users.findUnique({ where: { id: userId } });
-      if (subPlanExist.name === "LIFETIME" && user?.role === "USER") {
-        throw new ForbiddenException("Siz bu subscription planda foydalana olmaysiz");
+      const user = await this.prisma.users.findUnique({
+        where: { id: userId },
+      });
+      if (subPlanExist.name === 'LIFETIME' && user?.role === 'USER') {
+        throw new ForbiddenException(
+          'Siz bu subscription planda foydalana olmaysiz',
+        );
       }
-      
+
       const DATE_TIME_FORMAT = 'yyyy-MM-dd HH:mm';
       const end = addDays(new Date(), subPlanExist.durationDays);
-      
+
       const userSub = await this.prisma.userSubscription.create({
         data: {
           planId: subPlanExist.id,
           userId: userId,
-          startDate: format(new Date(), DATE_TIME_FORMAT),
+          startDate: new Date(),
           endDate: end,
           status: 'pending_payment',
           autoRenew: payload.autoRenew || false,
@@ -80,39 +84,39 @@ export class SubscriptionPlanService {
           amount: subPlanExist.price,
           paymentMethod: payload.paymentMethod,
           paymentDetailes: JSON.stringify(payload.payment_details),
-          status: "complected"
-        }
+          status: 'complected',
+        },
       });
 
-      if (payment.status === "complected") {
+      if (payment.status === 'complected') {
         await this.prisma.userSubscription.update({
           where: { id: userSub.id },
-          data: { status: "active" }
+          data: { status: 'active' },
         });
       }
       return {
         success: true,
-        message: "Obuna muvaffaqiyatli sotib olindi",
+        message: 'Obuna muvaffaqiyatli sotib olindi',
         data: {
           subscription: {
             id: userSub.id,
             plan: {
               id: subPlanExist.id,
-              name: subPlanExist.name
+              name: subPlanExist.name,
             },
             startDate: userSub.startDate,
             endDate: userSub.endDate,
             status: userSub.status,
-            autoRenew: userSub.autoRenew
+            autoRenew: userSub.autoRenew,
           },
           payment: {
             id: payment.id,
             amount: payment.amount,
             status: payment.status,
-            paymentMethod: payment.paymentMethod
-          }
-        }
-      }
+            paymentMethod: payment.paymentMethod,
+          },
+        },
+      };
     } catch (error) {
       console.log(error);
       throw new InternalServerErrorException({
@@ -121,13 +125,24 @@ export class SubscriptionPlanService {
       });
     }
   }
-  async findAll() {
+  async findAll(userRole: string) {
     try {
-      const plans = await this.prisma.subscriptionPlan.findMany();
-      return {
-        success: true,
-        data: plans,
-      };
+      if (userRole === 'SUPERADMIN' || userRole === 'ADMIN') {
+        return await this.prisma.subscriptionPlan.findMany({
+          where: { isActive: true },
+        });
+      }
+
+      return this.prisma.subscriptionPlan.findMany({
+        where: {
+          isActive: true,
+          NOT: {
+            name: {
+              in: ['LIFETIME'], 
+            },
+          },
+        },
+      });
     } catch (error) {
       console.log(error);
       throw new InternalServerErrorException({
@@ -164,6 +179,7 @@ export class SubscriptionPlanService {
 
   async update(id: string, payload: UpdateSubscriptionPlanDto) {
     try {
+      
       const updatedPlan = await this.prisma.subscriptionPlan.update({
         where: { id },
         data: payload,
