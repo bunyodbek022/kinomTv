@@ -74,7 +74,7 @@ model Movies {
   durationMinuts   Int
   posterUrl        String
   videoUrl         String
-  rating           Decimal  @db.Decimal(2, 1)
+  rating           Decimal  @db.Decimal(3, 1)
   subscriptionType SubType  @default(FREE)
   viewCount        Int      @default(0)
   createdAt        DateTime @default(now())

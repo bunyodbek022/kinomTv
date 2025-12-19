@@ -1,28 +1,35 @@
 // src/modules/movies/dto/movie-query.dto.ts
-import { IsOptional, IsString, IsInt, Min, IsEnum } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsString, IsInt, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class MovieQueryDto {
+  @ApiPropertyOptional({ description: 'Sahifa raqami', default: 1 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page?: number = 1;
 
+  @ApiPropertyOptional({ description: 'Elementlar soni', default: 10 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  limit?: number = 20;
+  limit?: number = 10;
 
+  @ApiPropertyOptional({ description: 'Kino nomi bo‘yicha qidiruv' })
   @IsOptional()
   @IsString()
   search?: string;
 
+  @ApiPropertyOptional({ description: 'Kategoriya nomi' })
   @IsOptional()
   @IsString()
   category?: string;
 
+  @ApiPropertyOptional({ description: 'Obuna turi', enum: ['FREE', 'PREMIUM'] })
   @IsOptional()
-  subscription_type?: string; 
+  @IsString()
+  subscription_type?: string;
 }

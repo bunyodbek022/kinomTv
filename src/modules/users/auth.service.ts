@@ -13,7 +13,7 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import type { Response } from 'express';
 import { addDays, format } from 'date-fns';
-import { tr } from 'date-fns/locale';
+
 
 @Injectable()
 export class AuthService {
